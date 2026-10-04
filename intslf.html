@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>لوحة الامتياز الدراسي الذكية | Smart Study Dashboard</title>
+  
+  <!-- خط Cairo من Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- أيقونات Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- مكتبات الرسوم والاحتفال -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            cairo: ['Cairo', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            dark: {
+              bg: '#080c14',
+              card: '#101726',
+              border: '#1e293b',
+              input: '#151e33'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #080c14;
+      color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080c14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #312e81;
+      border-radius: 9999px;
+    }
+    
+    .glass-card {
+      background: rgba(16, 23, 38, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.98);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+
+    .timer-circle {
+      stroke-dasharray: 283;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.3s linear;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    @keyframes subtle-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .timer-running {
+      animation: subtle-pulse 3s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-12 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- الشريط العلوي -->
+  <header class="sticky top-0 z-40 w-full glass-card border-b border-dark-border px-3 py-2.5 md:px-8 md:py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+      
+      <!-- شعار المنصة -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/25 shrink-0">
+          <i class="fa-solid fa-graduation-cap text-base md:text-xl text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-base md:text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
+            لوحة الامتياز
+            <span class="text-[10px] md:text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full border border-indigo-500/30">الذكية</span>
+          </h1>
+          <p class="text-[10px] md:text-xs text-slate-400 hidden sm:block">إدارة الأداء الأكاديمي والتحفيز المستمر</p>
+        </div>
+      </div>
+
+      <!-- إحصائيات علوية سريعة وأزرار -->
+      <div class="flex items-center gap-2 md:gap-3">
+        
+        <!-- أيام الالتزام Streak -->
+        <div class="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2 py-1 md:px-3 md:py-1.5 rounded-xl">
+          <i class="fa-solid fa-fire text-amber-400 text-xs md:text-sm animate-pulse"></i>
+          <span id="streakCount" class="font-bold text-amber-300 text-xs md:text-sm">0 يوم</span>
+        </div>
+
+        <!-- المستوى والـ XP -->
+        <div class="flex items-center gap-2 bg-slate-800/70 border border-dark-border px-2.5 py-1 md:px-4 md:py-1.5 rounded-xl">
+          <div class="text-right">
+            <div class="flex items-center justify-between gap-2 text-[10px] md:text-xs mb-0.5">
+              <span class="font-bold text-brand-400" id="currentLevelBadge">مستوى 1</span>
+              <span class="text-slate-400" id="xpProgressText">0/250</span>
+            </div>
+            <div class="w-16 sm:w-24 md:w-36 h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
+              <div id="xpProgressBar" class="h-full bg-gradient-to-l from-brand-400 to-indigo-500 rounded-full transition-all duration-500" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- زر التبديل للصفحات (شاشات الكمبيوتر) -->
+        <div class="hidden md:flex items-center bg-slate-900 border border-dark-border rounded-xl p-1 text-xs">
+          <button onclick="switchTab('dashboard')" id="desktopTabDashboard" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium transition">
+            <i class="fa-solid fa-house ml-1"></i> الرئيسية
+          </button>
+          <button onclick="switchTab('absence')" id="desktopTabAbsence" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition">
+            <i class="fa-solid fa-calendar-xmark ml-1 text-rose-400"></i> سجل الغياب
+          </button>
+        </div>
+
+        <!-- أدوات النسخ الاحتياطي والملف الشخصي -->
+        <button onclick="openProfileModal()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-dark-border" title="الملف الشخصي">
+          <i class="fa-solid fa-user-pen text-xs"></i>
+        </button>
+
+        <div class="hidden sm:flex items-center gap-1">
+          <button onclick="exportDataBackup()" title="تصدير نسخة" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border border-dark-border">
+            <i class="fa-solid fa-download text-xs"></i>
+          </button>
+          <label title="استعادة نسخة" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-indigo-400 border border-dark-border cursor-pointer">
+            <i class="fa-solid fa-upload text-xs"></i>
+            <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importDataBackup(event)">
+          </label>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== الصفحة 1: لوحة التحكم الرئيسية ==================== -->
+  <div id="pageDashboard" class="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 mt-4 md:mt-6 space-y-5 md:space-y-6">
+
+    <!-- بطاقة الترحيب والامتحان -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
+      <div class="lg:col-span-2 glass-card rounded-2xl p-4 md:p-6 relative overflow-hidden flex flex-col justify-between">
+        <div>
+          <div class="inline-flex items-center gap-1.5 bg-indigo-500/20 text-indigo-300 text-[11px] md:text-xs px-2.5 py-0.5 rounded-full mb-2 border border-indigo-500/30">
+            <i class="fa-solid fa-sparkles"></i>
+            <span>تتبع الحضور والغياب الأكاديمي الذكي</span>
+          </div>
+          <h2 class="text-lg md:text-2xl font-black text-white mb-1">
+            أهلاً بك، <span id="welcomeStudentName" class="text-indigo-400">أحمد</span> 👋
+          </h2>
+          <p class="text-slate-300 text-xs md:text-sm leading-relaxed">
+            التخصص: <span id="welcomeStudentMajor" class="font-medium text-slate-100">حوسبة الأجهزة الذكية</span>. سجل حضورك أولاً بأول، وتمتع بمرونة وسهولة الاستخدام عبر شاشة الهاتف!
+          </p>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-700/50 flex flex-wrap items-center justify-between text-[11px] text-slate-400">
+          <span class="flex items-center gap-1"><i class="fa-solid fa-arrows-rotate text-emerald-400"></i> يتجدد الحضور أسبوعياً</span>
+          <span id="currentWeekDisplay" class="font-mono text-indigo-300">--</span>
+        </div>
+      </div>
+
+      <!-- العد التنازلي -->
+      <div class="glass-card rounded-2xl p-4 md:p-6 flex flex-col justify-between border-brand-500/30 bg-gradient-to-br from-indigo-950/40 via-dark-card to-dark-card">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-hourglass-half text-amber-400"></i> العد التنازلي للاختبار
+          </span>
+          <button onclick="openExamModal()" class="text-[11px] text-brand-400 hover:underline">تعديل</button>
+        </div>
+        <div class="py-1 text-center">
+          <div class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-indigo-300" id="countdownDays">--</div>
+          <p class="text-[11px] text-slate-400 mt-0.5" id="examLabel">امتحانات منتصف الفصل</p>
+        </div>
+        <div class="text-center bg-slate-900/60 py-1.5 rounded-xl border border-slate-800 text-[11px] text-slate-300">
+          <span id="examTargetDate">التاريخ: 2026-11-15</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- شبكة الإحصائيات السريعة -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+      <div class="glass-card rounded-2xl p-3 md:p-4 flex items-center gap-3">
+        <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-lg md:text-xl shrink-0">
+          <i class="fa-solid fa-stopwatch"></i>
+        </div>
+        <div>
+          <p class="text-[10px] md:text-xs text-slate-400">ساعات الدراسة</p>
+          <h3 class="text-base md:text-xl font-bold text-white" id="statStudyHours">0.0 س</h3>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-3 md:p-4 flex items-center gap-3">
+        <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg md:text-xl shrink-0">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div>
+          <p class="text-[10px] md:text-xs text-slate-400">المهام المنجزة</p>
+          <h3 class="text-base md:text-xl font-bold text-white" id="statCompletedTasks">0 / 0</h3>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-3 md:p-4 flex items-center gap-3">
+        <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-lg md:text-xl shrink-0">
+          <i class="fa-solid fa-chart-pie"></i>
+        </div>
+        <div>
+          <p class="text-[10px] md:text-xs text-slate-400">نسبة الحضور</p>
+          <h3 class="text-base md:text-xl font-bold text-white" id="statCompletionRate">0%</h3>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-3 md:p-4 flex items-center gap-3">
+        <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg md:text-xl shrink-0">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div>
+          <p class="text-[10px] md:text-xs text-slate-400">رصيد XP</p>
+          <h3 class="text-base md:text-xl font-bold text-amber-300" id="statTotalXP">0</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- جدول المحاضرات الأسبوعي مع نظام 12 ساعة + تسجيل حضور وغياب فوري -->
+    <div class="glass-card rounded-2xl p-4 md:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 md:mb-6">
+        <div>
+          <h3 class="font-bold text-base md:text-xl text-white flex items-center gap-2">
+            <span class="p-1.5 md:p-2 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30">
+              <i class="fa-solid fa-calendar-check text-xs md:text-sm"></i>
+            </span>
+            الجدول الأسبوعي وتسجيل الحضور / الغياب
+          </h3>
+          <p class="text-[11px] md:text-xs text-slate-400 mt-0.5">
+            اضغط <span class="text-emerald-400 font-bold">✓ للحضور</span> (+25 XP) أو <span class="text-rose-400 font-bold">✗ للغياب</span> مع حفظ التاريخ.
+          </p>
+        </div>
+
+        <button onclick="resetWeeklyAttendanceManual()" class="self-start sm:self-auto text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-1.5 rounded-xl font-medium flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-rotate text-amber-400 text-xs"></i> تصفير حضور الأسبوع
+        </button>
+      </div>
+
+      <!-- شبكة بطاقات الأيام التفاعلية المتجاوبة -->
+      <div id="weeklyScheduleGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4"></div>
+    </div>
+
+    <!-- مؤقت بومودورو + الرسم البياني -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
+
+      <!-- بومودورو -->
+      <div class="lg:col-span-5 glass-card rounded-2xl p-5 md:p-6 flex flex-col justify-between items-center relative overflow-hidden" id="pomodoroCard">
+        <div class="w-full flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <h3 class="font-bold text-base md:text-lg text-white">مؤقت بومودورو</h3>
+          </div>
+          <span class="text-[11px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-lg border border-slate-700" id="timerStatusLabel">وضع الدراسة</span>
+        </div>
+
+        <div class="flex p-1 bg-slate-900/80 rounded-xl border border-dark-border w-full max-w-xs mb-4 text-xs">
+          <button onclick="setTimerMode('study')" id="btnModeStudy" class="flex-1 py-1 rounded-lg font-semibold bg-brand-600 text-white transition-all">دراسة (50 د)</button>
+          <button onclick="setTimerMode('shortBreak')" id="btnModeBreak" class="flex-1 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition-all">راحة (10 د)</button>
+          <button onclick="setTimerMode('quick')" id="btnModeQuick" class="flex-1 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition-all">سريع (25 د)</button>
+        </div>
+
+        <div class="relative w-48 h-48 md:w-56 md:h-56 flex items-center justify-center my-1">
+          <svg class="w-full h-full" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" stroke="#1f293d" stroke-width="6" fill="transparent" />
+            <circle id="timerProgressRing" cx="50" cy="50" r="45" stroke="#6366f1" stroke-width="6" fill="transparent" stroke-linecap="round" class="timer-circle" />
+          </svg>
+          <div class="absolute flex flex-col items-center justify-center text-center">
+            <span id="timerDisplay" class="text-3xl md:text-5xl font-black tracking-wider text-white font-mono">50:00</span>
+            <span id="timerSubtext" class="text-[11px] text-indigo-300 font-medium mt-1">جلسة تركيز كاملة</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 mt-4 w-full max-w-xs justify-center">
+          <button id="timerToggleBtn" onclick="toggleTimer()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 active:scale-95">
+            <i id="timerToggleIcon" class="fa-solid fa-play text-xs"></i>
+            <span id="timerToggleText">بدء الجلسة</span>
+          </button>
+          <button onclick="resetTimer()" title="إعادة ضبط" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center justify-center">
+            <i class="fa-solid fa-arrow-rotate-right text-xs"></i>
+          </button>
+        </div>
+
+        <p class="text-[11px] text-slate-400 text-center mt-3">
+          <i class="fa-solid fa-gift text-amber-400 ml-1"></i> إتمام الجلسة يمنحك <strong>+100 XP</strong>
+        </p>
+      </div>
+
+      <!-- الرسم البياني -->
+      <div class="lg:col-span-7 glass-card rounded-2xl p-4 md:p-6 flex flex-col justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="font-bold text-base md:text-lg text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-column text-indigo-400"></i> نشاط الدراسة الأسبوعي
+            </h3>
+            <p class="text-[11px] text-slate-400">ساعات التركيز المنجزة خلال آخر 7 أيام</p>
+          </div>
+          <span class="text-[11px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-1 rounded-lg">
+            المعدل: <strong id="weeklyAvgHours">0.0 س</strong>
+          </span>
+        </div>
+
+        <div class="relative w-full h-56 md:h-72">
+          <canvas id="weeklyStudyChart"></canvas>
+        </div>
+
+        <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-dark-border">
+          <span>سجل يتحدث بعد كل جلسة تركيز</span>
+          <button onclick="openLogStudyModal()" class="text-brand-400 hover:underline">
+            <i class="fa-solid fa-plus-circle ml-0.5"></i> تسجيل يدوي
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- إدارة المهام -->
+    <div class="glass-card rounded-2xl p-4 md:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 class="font-bold text-base md:text-xl text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-indigo-400"></i> إدارة المهام والتكليفات
+          </h3>
+          <p class="text-[11px] md:text-xs text-slate-400">نظم واجباتك وتقاريرك وتجنب التأخير</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="flex p-1 bg-slate-900 rounded-xl border border-dark-border text-xs">
+            <button onclick="setTaskFilter('all')" id="filterAll" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium">الكل</button>
+            <button onclick="setTaskFilter('pending')" id="filterPending" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white">قيد الانتظار</button>
+            <button onclick="setTaskFilter('completed')" id="filterCompleted" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white">المكتملة</button>
+          </div>
+
+          <button onclick="openTaskModal()" class="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand-500/20">
+            <i class="fa-solid fa-plus"></i>
+            <span>إضافة</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="tasksListContainer" class="space-y-2.5 min-h-[100px]"></div>
+
+      <div id="tasksEmptyState" class="hidden text-center py-8 border-2 border-dashed border-dark-border rounded-xl">
+        <i class="fa-solid fa-clipboard-check text-3xl text-slate-600 mb-2"></i>
+        <h4 class="text-slate-300 font-semibold text-xs">لا توجد مهام حالياً!</h4>
+      </div>
+    </div>
+
+    <!-- المساقات الدراسية والإنجازات -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
+      <div class="lg:col-span-2 glass-card rounded-2xl p-4 md:p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-base md:text-xl text-white flex items-center gap-2">
+              <i class="fa-solid fa-book-bookmark text-indigo-400"></i> المساقات الأكاديمية
+            </h3>
+            <p class="text-[11px] text-slate-400">المحاضرات التراكمية ونسب الحضور</p>
+          </div>
+          <button onclick="openSubjectModal()" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-dark-border flex items-center gap-1">
+            <i class="fa-solid fa-plus text-indigo-400"></i>
+            <span>إضافة</span>
+          </button>
+        </div>
+        <div id="subjectsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 md:p-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-base md:text-lg text-white flex items-center gap-2">
+            <i class="fa-solid fa-trophy text-amber-400"></i> سجل الأوسمة
+          </h3>
+          <span class="text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-lg" id="achievementsCount">0 / 6</span>
+        </div>
+        <div id="achievementsList" class="space-y-2.5"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== الصفحة 2: سجل الغياب الرسمي (Absence Tracker Page) ==================== -->
+  <div id="pageAbsence" class="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 mt-4 md:mt-6 space-y-5 hidden">
+    
+    <!-- ترويسة صفحة الغياب -->
+    <div class="glass-card rounded-2xl p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-300 text-xs px-2.5 py-0.5 rounded-full mb-2 border border-rose-500/30">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>نظام الرصد والمتابعة الأكاديمية</span>
+        </div>
+        <h2 class="text-xl md:text-2xl font-black text-white">سجل الغياب عن المحاضرات</h2>
+        <p class="text-slate-300 text-xs mt-1">تتبع التواريخ الدقيقة لغياباتك لتفادي تخطي نسبة الحرمان الأكاديمي.</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openManualAbsenceModal()" class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/30 transition">
+          <i class="fa-solid fa-user-xmark"></i>
+          <span>تسجيل غياب مخصص</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- بطاقات إحصائيات الغياب -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+      <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xl shrink-0">
+          <i class="fa-solid fa-calendar-xmark"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">إجمالي مرات الغياب</p>
+          <h3 class="text-2xl font-bold text-white mt-0.5" id="totalAbsenceCount">0</h3>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">أكثر مادة غياباً</p>
+          <h3 class="text-base font-bold text-amber-300 mt-0.5 truncate max-w-[150px]" id="mostAbsenceSubject">لا يوجد</h3>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
+          <i class="fa-solid fa-shield-heart"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">حالة الالتزام الأكاديمي</p>
+          <h3 class="text-sm font-bold text-emerald-300 mt-0.5" id="attendanceSafetyStatus">ممتازة (آمن)</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- جدول وقائمة سجل الغياب -->
+    <div class="glass-card rounded-2xl p-4 md:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <h3 class="font-bold text-base md:text-lg text-white flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i> تفاصيل وتواريخ الغياب المسجلة
+        </h3>
+
+        <!-- فلتر المواد للغياب -->
+        <div class="w-full sm:w-auto">
+          <select id="absenceFilterSelect" onchange="renderAbsenceList()" class="w-full sm:w-56 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-brand-500">
+            <option value="all">جميع المساقات</option>
+            <!-- يولد ديناميكياً -->
+          </select>
+        </div>
+      </div>
+
+      <!-- قائمة الغيابات -->
+      <div id="absenceListContainer" class="space-y-2.5">
+        <!-- تولد بواسطة JS -->
+      </div>
+
+      <!-- حالة القائمة الفارغة -->
+      <div id="absenceEmptyState" class="hidden text-center py-12 border-2 border-dashed border-dark-border rounded-xl">
+        <i class="fa-solid fa-circle-check text-4xl text-emerald-500/50 mb-2"></i>
+        <h4 class="text-slate-300 font-semibold text-sm">سجل ناصع البياض!</h4>
+        <p class="text-slate-500 text-xs mt-1">لم يتم تسجيل أي حالة غياب حتى الآن. واصل التزامك المميز.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== شريط التنقل السفلي المخصص للهاتف (Bottom Navigation) ==================== -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-panel border-t border-dark-border px-6 py-2 flex items-center justify-around shadow-2xl">
+    <button onclick="switchTab('dashboard')" id="mobileNavDashboard" class="flex flex-col items-center gap-1 text-indigo-400 font-bold transition">
+      <i class="fa-solid fa-house text-lg"></i>
+      <span class="text-[10px]">الرئيسية</span>
+    </button>
+    <button onclick="openTaskModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition">
+      <div class="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center -mt-4 shadow-lg shadow-brand-500/40 border-2 border-[#080c14]">
+        <i class="fa-solid fa-plus text-sm"></i>
+      </div>
+      <span class="text-[10px]">مهمة</span>
+    </button>
+    <button onclick="switchTab('absence')" id="mobileNavAbsence" class="flex flex-col items-center gap-1 text-slate-400 font-medium transition">
+      <i class="fa-solid fa-calendar-xmark text-lg"></i>
+      <span class="text-[10px]">سجل الغياب</span>
+    </button>
+  </nav>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- نافذة تسجيل غياب مخصص -->
+  <div id="manualAbsenceModal" onclick="handleBackdropClick(event, 'manualAbsenceModal')" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-5 shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-user-xmark text-rose-400"></i> تسجيل غياب عن محاضرة
+        </h3>
+        <button onclick="closeManualAbsenceModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveManualAbsence(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">المادة الدراسية *</label>
+          <select id="absenceSubjectSelect" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">تاريخ الغياب *</label>
+          <input type="date" id="absenceDateInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">سبب الغياب (اختياري)</label>
+          <input type="text" id="absenceReasonInput" placeholder="مثال: ظرف طارئ، مريض..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-700/60">
+          <button type="button" onclick="closeManualAbsenceModal()" class="px-3 py-1.5 text-xs text-slate-400">إلغاء</button>
+          <button type="submit" class="px-4 py-1.5 text-xs bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl">حفظ الغياب</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Task Modal -->
+  <div id="taskModal" onclick="handleBackdropClick(event, 'taskModal')" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="glass-panel w-full max-w-md rounded-2xl p-5 shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="taskModalTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-thumbtack text-brand-400"></i> إضافة مهمة
+        </h3>
+        <button onclick="closeTaskModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="taskForm" onsubmit="saveTask(event)" class="space-y-3">
+        <input type="hidden" id="taskIdInput">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">العنوان *</label>
+          <input type="text" id="taskTitleInput" required placeholder="مثال: تسليم تقرير مختبر البرمجة" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">المادة *</label>
+            <select id="taskSubjectInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">الأولوية</label>
+            <select id="taskPriorityInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none">
+              <option value="high">🔥 عاجل</option>
+              <option value="medium" selected>⚡ متوسط</option>
+              <option value="low">🌱 عادي</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">تاريخ التسليم</label>
+          <input type="date" id="taskDateInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/60">
+          <button type="button" onclick="closeTaskModal()" class="px-3 py-1.5 text-slate-400 text-xs">إلغاء</button>
+          <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl">حفظ (+50 XP)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" onclick="handleBackdropClick(event, 'profileModal')" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-5 shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-id-card text-brand-400"></i> الملف الأكاديمي
+        </h3>
+        <button onclick="closeProfileModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="profileForm" onsubmit="saveProfile(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">اسم الطالب</label>
+          <input type="text" id="profileNameInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">التخصص</label>
+          <input type="text" id="profileMajorInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-700/60">
+          <button type="button" onclick="closeProfileModal()" class="px-3 py-1.5 text-slate-400 text-xs">إلغاء</button>
+          <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Subject Modal -->
+  <div id="subjectModal" onclick="handleBackdropClick(event, 'subjectModal')" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="glass-panel w-full max-w-sm rounded-2xl p-5 shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-book text-brand-400"></i> إضافة مساق جديد
+        </h3>
+        <button onclick="closeSubjectModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="subjectForm" onsubmit="saveSubject(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">اسم المادة *</label>
+          <input type="text" id="subNameInput" required placeholder="مثال: تحليل وتصميم النظم" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">المحاضرات</label>
+            <input type="number" id="subLecturesInput" required min="1" value="28" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">المنجز</label>
+            <input type="number" id="subCompletedInput" required min="0" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">اللون</label>
+          <input type="color" id="subColorInput" value="#6366f1" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0">
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-700/60">
+          <button type="button" onclick="closeSubjectModal()" class="px-3 py-1.5 text-xs text-slate-400">إلغاء</button>
+          <button type="submit" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl">إضافة</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Exam Modal -->
+  <div id="examModal" onclick="handleBackdropClick(event, 'examModal')" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="glass-panel w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-clock text-amber-400"></i> موعد الاختبار
+        </h3>
+        <button onclick="closeExamModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveExamCountdown(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">العنوان</label>
+          <input type="text" id="examTitleInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">التاريخ</label>
+          <input type="date" id="examDateModalInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeExamModal()" class="px-3 py-1.5 text-xs text-slate-400">إلغاء</button>
+          <button type="submit" class="px-4 py-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Manual Study Modal -->
+  <div id="logStudyModal" onclick="handleBackdropClick(event, 'logStudyModal')" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="glass-panel w-full max-w-xs rounded-2xl p-5 shadow-2xl border border-slate-700" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-pen-to-square text-indigo-400"></i> تسجيل دراسة يدوي
+        </h3>
+        <button onclick="closeLogStudyModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveManualStudy(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">المدة (بالدقائق)</label>
+          <input type="number" id="manualMinutesInput" required min="10" max="480" value="60" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeLogStudyModal()" class="px-3 py-1.5 text-xs text-slate-400">إلغاء</button>
+          <button type="submit" class="px-4 py-1.5 text-xs bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="fixed bottom-16 md:bottom-6 left-4 md:left-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2.5 bg-slate-900/95 border border-brand-500/40 px-3.5 py-2.5 rounded-2xl shadow-2xl">
+    <div id="toastIcon" class="text-brand-400 text-base"></div>
+    <span id="toastMessage" class="text-xs md:text-sm font-semibold text-white"></span>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'SMART_STUDY_DASHBOARD_DATA_V5_MOBILE_ABSENCE';
+
+    // جدول المحاضرات بنظام 12 ساعة
+    const scheduleByDays = [
+      {
+        dayName: "الأحد",
+        sessions: [
+          { sessionId: "sun_net", subId: "sub_net", time: "08:30 ص - 10:00 ص", subject: "شبكات الحاسوب", type: "نظري", color: "#3b82f6" },
+          { sessionId: "sun_soc", subId: "sub_soc", time: "10:00 ص - 11:30 ص", subject: "تحليل شبكات التواصل الإجتماعي", type: "نظري", color: "#8b5cf6" },
+          { sessionId: "sun_ir", subId: "sub_ir", time: "01:00 م - 02:30 م", subject: "نظم استرجاع المعلومات", type: "نظري", color: "#f59e0b" },
+          { sessionId: "sun_vp", subId: "sub_vp", time: "02:30 م - 03:30 م", subject: "البرمجة المرئية", type: "نظري", color: "#ec4899" },
+          { sessionId: "sun_vplab", subId: "sub_vplab", time: "03:30 م - 05:30 م", subject: "مختبر البرمجة المرئية", type: "مختبر", color: "#f43f5e" }
+        ]
+      },
+      {
+        dayName: "الإثنين",
+        sessions: [
+          { sessionId: "mon_se", subId: "sub_se", time: "10:00 ص - 11:30 ص", subject: "هندسة البرمجيات", type: "نظري", color: "#10b981" },
+          { sessionId: "mon_ooplab", subId: "sub_ooplab", time: "02:30 م - 04:30 م", subject: "مختبر البرمجة الكينونية 1", type: "مختبر", color: "#06b6d4" }
+        ]
+      },
+      {
+        dayName: "الثلاثاء",
+        sessions: [
+          { sessionId: "tue_net", subId: "sub_net", time: "08:30 ص - 10:00 ص", subject: "شبكات الحاسوب", type: "نظري", color: "#3b82f6" },
+          { sessionId: "tue_soc", subId: "sub_soc", time: "10:00 ص - 11:30 ص", subject: "تحليل شبكات التواصل الإجتماعي", type: "نظري", color: "#8b5cf6" },
+          { sessionId: "tue_ir", subId: "sub_ir", time: "01:00 م - 02:30 م", subject: "نظم استرجاع المعلومات", type: "نظري", color: "#f59e0b" },
+          { sessionId: "tue_vp", subId: "sub_vp", time: "02:30 م - 03:30 م", subject: "البرمجة المرئية", type: "نظري", color: "#ec4899" }
+        ]
+      },
+      {
+        dayName: "الأربعاء",
+        sessions: [
+          { sessionId: "wed_se", subId: "sub_se", time: "10:00 ص - 11:30 ص", subject: "هندسة البرمجيات", type: "نظري", color: "#10b981" }
+        ]
+      }
+    ];
+
+    function getCurrentWeekKey() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+      const yearStart = new Date(d.getFullYear(), 0, 1);
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getFullYear()}-W${weekNo}`;
+    }
+
+    const defaultData = {
+      profile: {
+        name: "أحمد",
+        major: "حوسبة الأجهزة الذكية",
+        level: 1,
+        xp: 0,
+        streakDays: 0,
+        lastActiveDate: new Date().toISOString().split('T')[0]
+      },
+      examTarget: {
+        title: "امتحانات منتصف الفصل الدراسي",
+        date: "2026-11-15"
+      },
+      stats: {
+        totalMinutesStudied: 0,
+        dailyHistory: {}
+      },
+      weeklyAttendance: {
+        currentWeekKey: getCurrentWeekKey(),
+        attendedSessions: {} // sessionId: true
+      },
+      absenceLog: [], // { id, subId, subjectName, date, time, reason }
+      subjects: [
+        { id: "sub_net", name: "شبكات الحاسوب", lecturesCount: 28, completedLectures: 0, color: "#3b82f6" },
+        { id: "sub_soc", name: "تحليل شبكات التواصل الإجتماعي", lecturesCount: 28, completedLectures: 0, color: "#8b5cf6" },
+        { id: "sub_se", name: "هندسة البرمجيات", lecturesCount: 28, completedLectures: 0, color: "#10b981" },
+        { id: "sub_ir", name: "نظم استرجاع المعلومات", lecturesCount: 28, completedLectures: 0, color: "#f59e0b" },
+        { id: "sub_vp", name: "البرمجة المرئية", lecturesCount: 28, completedLectures: 0, color: "#ec4899" },
+        { id: "sub_vplab", name: "مختبر البرمجة المرئية", lecturesCount: 14, completedLectures: 0, color: "#f43f5e" },
+        { id: "sub_ooplab", name: "مختبر البرمجة الكينونية 1", lecturesCount: 14, completedLectures: 0, color: "#06b6d4" }
+      ],
+      tasks: [],
+      achievements: [
+        { id: "first_session", title: "أول قطرة غيث", desc: "أكمل أول جلسة بومودورو دراسية", icon: "fa-seedling", unlocked: false },
+        { id: "first_task", title: "مبدد العقبات", desc: "أنهِ أول مهمة أو واجب دراسي", icon: "fa-check-double", unlocked: false },
+        { id: "study_5_hours", title: "مقاتل التركيز", desc: "تجاوز 5 ساعات دراسة مسجلة", icon: "fa-brain", unlocked: false },
+        { id: "level_2", title: "ترقية أسطورية", desc: "الوصول إلى المستوى 2 في المنصة", icon: "fa-medal", unlocked: false },
+        { id: "tasks_5_done", title: "آلة الإنجاز", desc: "إكمال 5 مهام أكاديمية بنجاح", icon: "fa-rocket", unlocked: false },
+        { id: "streak_7", title: "شعلة لا تنطفئ", desc: "المواظبة على الدراسة لمدة 7 أيام متتالية", icon: "fa-fire-flame-curved", unlocked: false }
+      ]
+    };
+
+    let appData = loadState();
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return {
+            ...defaultData,
+            ...parsed,
+            profile: { ...defaultData.profile, ...(parsed.profile || {}) },
+            stats: { ...defaultData.stats, ...(parsed.stats || {}) },
+            weeklyAttendance: { ...defaultData.weeklyAttendance, ...(parsed.weeklyAttendance || {}) },
+            absenceLog: parsed.absenceLog || []
+          };
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return JSON.parse(JSON.stringify(defaultData));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // التبديل بين اللوحة وسجل الغياب (Tab Switching)
+    function switchTab(tab) {
+      const pageDash = document.getElementById('pageDashboard');
+      const pageAbs = document.getElementById('pageAbsence');
+
+      const dBtnDash = document.getElementById('desktopTabDashboard');
+      const dBtnAbs = document.getElementById('desktopTabAbsence');
+
+      const mNavDash = document.getElementById('mobileNavDashboard');
+      const mNavAbs = document.getElementById('mobileNavAbsence');
+
+      if (tab === 'dashboard') {
+        pageDash.classList.remove('hidden');
+        pageAbs.classList.add('hidden');
+
+        // سطح المكتب
+        dBtnDash.className = "px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium transition";
+        dBtnAbs.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition";
+
+        // الهاتف
+        mNavDash.className = "flex flex-col items-center gap-1 text-indigo-400 font-bold transition";
+        mNavAbs.className = "flex flex-col items-center gap-1 text-slate-400 font-medium transition";
+      } else {
+        pageDash.classList.add('hidden');
+        pageAbs.classList.remove('hidden');
+
+        // سطح المكتب
+        dBtnDash.className = "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition";
+        dBtnAbs.className = "px-3 py-1.5 rounded-lg bg-rose-600 text-white font-medium transition";
+
+        // الهاتف
+        mNavDash.className = "flex flex-col items-center gap-1 text-slate-400 font-medium transition";
+        mNavAbs.className = "flex flex-col items-center gap-1 text-rose-400 font-bold transition";
+
+        renderAbsenceList();
+        updateAbsenceMetrics();
+      }
+    }
+
+    function checkWeeklyAutoReset() {
+      const activeWeek = getCurrentWeekKey();
+      document.getElementById('currentWeekDisplay').innerText = activeWeek;
+
+      if (appData.weeklyAttendance.currentWeekKey !== activeWeek) {
+        appData.weeklyAttendance.currentWeekKey = activeWeek;
+        appData.weeklyAttendance.attendedSessions = {};
+        saveState();
+        showToast('أسبوع دراسي جديد! تم تجديد سجل حضور الأسبوع 🗓️', 'fa-solid fa-arrows-rotate text-emerald-400');
+      }
+    }
+
+    function resetWeeklyAttendanceManual() {
+      if (!confirm('هل تريد تصفير علامات حضور محاضرات هذا الأسبوع للبدء من جديد؟')) return;
+      appData.weeklyAttendance.attendedSessions = {};
+      saveState();
+      renderWeeklySchedule();
+      showToast('تم تصفير حضور الأسبوع', 'fa-solid fa-rotate text-amber-400');
+    }
+
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playBeepSound(type = 'success') {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        if (type === 'success') {
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.12);
+          osc.frequency.setValueAtTime(783.99, now + 0.24);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+          osc.start(now);
+          osc.stop(now + 0.45);
+        } else {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.setValueAtTime(1046.50, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+          osc.start(now);
+          osc.stop(now + 0.7);
+        }
+      } catch (e) {}
+    }
+
+    function showToast(message, icon = 'fa-solid fa-circle-check', isCelebration = false) {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = message;
+      toastIcon.innerHTML = `<i class="${icon}"></i>`;
+
+      toast.classList.remove('opacity-0', 'translate-y-24');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      if (isCelebration && typeof confetti === 'function') {
+        confetti({ particleCount: 40, spread: 50, origin: { y: 0.85 } });
+      }
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-24');
+      }, 3500);
+    }
+
+    function handleBackdropClick(event, modalId) {
+      if (event.target.id === modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 200);
+      }
+    }
+
+    function updateStreakLogic() {
+      const today = new Date().toISOString().split('T')[0];
+      const last = appData.profile.lastActiveDate;
+
+      if (last !== today) {
+        const lastDate = new Date(last);
+        const currDate = new Date(today);
+        const diffDays = Math.round((currDate - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          appData.profile.streakDays += 1;
+        } else if (diffDays > 1) {
+          appData.profile.streakDays = 1;
+        }
+        appData.profile.lastActiveDate = today;
+        saveState();
+      }
+    }
+
+    function addXP(points, reason = '') {
+      appData.profile.xp += points;
+      const xpForNextLevel = appData.profile.level * 250;
+      showToast(`+${points} XP ${reason ? `(${reason})` : ''}`, 'fa-solid fa-bolt text-amber-400');
+      playBeepSound('success');
+
+      if (appData.profile.xp >= xpForNextLevel) {
+        appData.profile.level += 1;
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        }
+        showToast(`تهانينا! ارتقيت إلى المستوى ${appData.profile.level} 🎓`, 'fa-solid fa-crown text-amber-400', true);
+      }
+
+      saveState();
+      updateProfileUI();
+      checkAchievements();
+    }
+
+    function deductXP(points) {
+      appData.profile.xp = Math.max(0, appData.profile.xp - points);
+      saveState();
+      updateProfileUI();
+    }
+
+    function checkAchievements() {
+      let changed = false;
+      const hoursStudied = appData.stats.totalMinutesStudied / 60;
+      const completedTasks = appData.tasks.filter(t => t.completed).length;
+
+      appData.achievements.forEach(ach => {
+        if (!ach.unlocked) {
+          if (ach.id === 'study_5_hours' && hoursStudied >= 5) {
+            ach.unlocked = true; changed = true;
+          } else if (ach.id === 'level_2' && appData.profile.level >= 2) {
+            ach.unlocked = true; changed = true;
+          } else if (ach.id === 'tasks_5_done' && completedTasks >= 5) {
+            ach.unlocked = true; changed = true;
+          } else if (ach.id === 'streak_7' && appData.profile.streakDays >= 7) {
+            ach.unlocked = true; changed = true;
+          }
+        }
+      });
+
+      if (changed) {
+        saveState();
+        renderAchievements();
+      }
+    }
+
+    // بومودورو
+    let timerMode = 'study';
+    let timerDuration = 50 * 60;
+    let timeRemaining = 50 * 60;
+    let timerInterval = null;
+    let isTimerRunning = false;
+    let timerEndTime = null;
+
+    function setTimerMode(mode) {
+      if (isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        updateTimerButtonUI();
+      }
+
+      timerMode = mode;
+      const btnStudy = document.getElementById('btnModeStudy');
+      const btnBreak = document.getElementById('btnModeBreak');
+      const btnQuick = document.getElementById('btnModeQuick');
+      const statusLabel = document.getElementById('timerStatusLabel');
+      const subtext = document.getElementById('timerSubtext');
+
+      [btnStudy, btnBreak, btnQuick].forEach(btn => {
+        btn.className = "flex-1 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition-all";
+      });
+
+      if (mode === 'study') {
+        timerDuration = 50 * 60;
+        btnStudy.className = "flex-1 py-1 rounded-lg font-semibold bg-brand-600 text-white transition-all shadow";
+        statusLabel.innerText = "وضع الدراسة الممتد";
+        subtext.innerText = "جلسة تركيز كاملة (50 د)";
+      } else if (mode === 'shortBreak') {
+        timerDuration = 10 * 60;
+        btnBreak.className = "flex-1 py-1 rounded-lg font-semibold bg-emerald-600 text-white transition-all shadow";
+        statusLabel.innerText = "استراحة منعشة";
+        subtext.innerText = "استرخِ وتنفس (10 د)";
+      } else if (mode === 'quick') {
+        timerDuration = 25 * 60;
+        btnQuick.className = "flex-1 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition-all shadow";
+        statusLabel.innerText = "جلسة سريعة";
+        subtext.innerText = "بومودورو قياسي (25 د)";
+      }
+
+      timeRemaining = timerDuration;
+      updateTimerDisplay();
+    }
+
+    function toggleTimer() {
+      getAudioContext();
+      if (isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+      } else {
+        isTimerRunning = true;
+        timerEndTime = Date.now() + timeRemaining * 1000;
+        timerInterval = setInterval(() => {
+          timeRemaining = Math.max(0, Math.round((timerEndTime - Date.now()) / 1000));
+          updateTimerDisplay();
+          if (timeRemaining <= 0) {
+            handleTimerComplete();
+          }
+        }, 250);
+      }
+      updateTimerButtonUI();
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+      timeRemaining = timerDuration;
+      updateTimerDisplay();
+      updateTimerButtonUI();
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeRemaining / 60);
+      const seconds = timeRemaining % 60;
+      document.getElementById('timerDisplay').innerText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+      const progressRing = document.getElementById('timerProgressRing');
+      const totalCircumference = 283;
+      const fraction = (timerDuration - timeRemaining) / timerDuration;
+      const offset = totalCircumference - (fraction * totalCircumference);
+      progressRing.style.strokeDashoffset = offset;
+      progressRing.setAttribute('stroke', timerMode === 'shortBreak' ? '#10b981' : '#6366f1');
+    }
+
+    function updateTimerButtonUI() {
+      const btn = document.getElementById('timerToggleBtn');
+      const icon = document.getElementById('timerToggleIcon');
+      const text = document.getElementById('timerToggleText');
+      const card = document.getElementById('pomodoroCard');
+
+      if (isTimerRunning) {
+        icon.className = "fa-solid fa-pause text-xs";
+        text.innerText = "إيقاف مؤقت";
+        btn.classList.remove('from-brand-600', 'to-indigo-600');
+        btn.classList.add('from-amber-600', 'to-amber-700');
+        card.classList.add('timer-running');
+      } else {
+        icon.className = "fa-solid fa-play text-xs";
+        text.innerText = "متابعة الجلسة";
+        btn.classList.remove('from-amber-600', 'to-amber-700');
+        btn.classList.add('from-brand-600', 'to-indigo-600');
+        card.classList.remove('timer-running');
+      }
+    }
+
+    function handleTimerComplete() {
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+      playBeepSound('timerEnd');
+
+      const minutesCompleted = Math.round(timerDuration / 60);
+
+      if (timerMode === 'study' || timerMode === 'quick') {
+        appData.stats.totalMinutesStudied += minutesCompleted;
+        const today = new Date().toISOString().split('T')[0];
+        appData.stats.dailyHistory[today] = +((appData.stats.dailyHistory[today] || 0) + (minutesCompleted / 60)).toFixed(1);
+
+        addXP(100, `جلسة تركيز (${minutesCompleted} د)`);
+        showToast(`أحسنت! أتممت جلسة دراسية بنجاح (+100 XP)`, 'fa-solid fa-star text-amber-400', true);
+
+        const firstAch = appData.achievements.find(a => a.id === 'first_session');
+        if (firstAch && !firstAch.unlocked) {
+          firstAch.unlocked = true;
+          renderAchievements();
+        }
+        setTimerMode('shortBreak');
+      } else {
+        showToast('انتهت الاستراحة! استعد لجولة تركيز جديدة 💪', 'fa-solid fa-bell text-indigo-400');
+        setTimerMode('study');
+      }
+
+      saveState();
+      updateAllUI();
+      renderStudyChart();
+    }
+
+    let studyChartInstance = null;
+
+    function renderStudyChart() {
+      const ctx = document.getElementById('weeklyStudyChart').getContext('2d');
+      const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      
+      const labels = [];
+      const dataValues = [];
+      const todayDate = new Date();
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(todayDate.getDate() - i);
+        const iso = d.toISOString().split('T')[0];
+        labels.push(dayNames[d.getDay()]);
+        dataValues.push(appData.stats.dailyHistory[iso] || 0);
+      }
+
+      if (studyChartInstance) {
+        studyChartInstance.destroy();
+      }
+
+      const totalWeekHours = dataValues.reduce((a, b) => a + b, 0);
+      const avg = (totalWeekHours / 7).toFixed(1);
+      document.getElementById('weeklyAvgHours').innerText = `${avg} س / يوم`;
+
+      studyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'ساعات التركيز',
+            data: dataValues,
+            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+            hoverBackgroundColor: '#818cf8',
+            borderColor: '#6366f1',
+            borderWidth: 1.5,
+            borderRadius: 6,
+            barThickness: window.innerWidth < 640 ? 16 : 24
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              rtl: true,
+              callbacks: {
+                label: function(c) { return `المدة: ${c.raw} ساعة`; }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + ' س' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#cbd5e1', font: { family: 'Cairo', size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    // رسم الجدول مع زري الحضور والغياب المباشر
+    function renderWeeklySchedule() {
+      const container = document.getElementById('weeklyScheduleGrid');
+      container.innerHTML = '';
+
+      scheduleByDays.forEach(day => {
+        const dayCard = document.createElement('div');
+        dayCard.className = "bg-slate-900/70 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between hover:border-slate-700 transition";
+
+        let sessionHtml = '';
+        day.sessions.forEach(sess => {
+          const isAttended = !!(appData.weeklyAttendance.attendedSessions && appData.weeklyAttendance.attendedSessions[sess.sessionId]);
+          const isLab = sess.type === 'مختبر';
+
+          sessionHtml += `
+            <div class="p-2.5 rounded-xl border transition-all ${
+              isAttended 
+                ? 'bg-emerald-950/25 border-emerald-600/40 shadow-sm' 
+                : isLab 
+                  ? 'bg-cyan-950/20 border-cyan-800/30' 
+                  : 'bg-slate-800/50 border-slate-700/40'
+            }">
+              <div class="flex items-center justify-between gap-1 mb-1">
+                <span class="text-[11px] font-mono font-bold ${isAttended ? 'text-emerald-300' : isLab ? 'text-cyan-400' : 'text-indigo-300'} flex items-center gap-1">
+                  <i class="fa-regular fa-clock text-[10px]"></i> ${sess.time}
+                </span>
+
+                <div class="flex items-center gap-1">
+                  <!-- زر تسجيل الحضور -->
+                  <button onclick="toggleSessionAttendance('${sess.sessionId}', '${sess.subId}', '${sess.subject}')" 
+                    title="${isAttended ? 'إلغاء الحضور' : 'تسجيل حضور (+25 XP)'}" 
+                    class="w-6 h-6 rounded-lg flex items-center justify-center transition border ${
+                      isAttended 
+                        ? 'bg-emerald-500 border-emerald-500 text-white' 
+                        : 'bg-slate-800 border-slate-600 hover:border-emerald-400 text-slate-400 hover:text-emerald-400'
+                    }">
+                    <i class="fa-solid fa-check text-[11px]"></i>
+                  </button>
+
+                  <!-- زر تسجيل الغياب السريع -->
+                  <button onclick="quickLogAbsence('${sess.subId}', '${sess.subject}', '${sess.time}')" 
+                    title="تسجيل غياب في السجل" 
+                    class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-600 hover:border-rose-400 text-slate-400 hover:text-rose-400 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-[11px]"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <h5 class="text-xs font-bold ${isAttended ? 'text-emerald-200 line-through' : 'text-white'} leading-snug flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${sess.color}"></span>
+                  ${sess.subject}
+                </h5>
+                <span class="text-[9px] px-1.5 py-0.2 rounded ${isLab ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-700/60 text-slate-300'}">
+                  ${sess.type}
+                </span>
+              </div>
+            </div>
+          `;
+        });
+
+        dayCard.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-800">
+              <h4 class="font-extrabold text-sm md:text-base text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+                يوم ${day.dayName}
+              </h4>
+              <span class="text-[10px] text-slate-400">${day.sessions.length} محاضرات</span>
+            </div>
+            <div class="space-y-2">
+              ${sessionHtml}
+            </div>
+          </div>
+        `;
+        container.appendChild(dayCard);
+      });
+    }
+
+    // تسجيل الحضور
+    function toggleSessionAttendance(sessionId, subId, subName) {
+      if (!appData.weeklyAttendance.attendedSessions) {
+        appData.weeklyAttendance.attendedSessions = {};
+      }
+
+      const currentState = !!appData.weeklyAttendance.attendedSessions[sessionId];
+      const targetSub = appData.subjects.find(s => s.id === subId);
+
+      if (!currentState) {
+        appData.weeklyAttendance.attendedSessions[sessionId] = true;
+        if (targetSub && targetSub.completedLectures < targetSub.lecturesCount) {
+          targetSub.completedLectures += 1;
+        }
+        addXP(25, `حضور ${subName}`);
+        showToast(`حاضر: ${subName} (+25 XP)`, 'fa-solid fa-circle-check text-emerald-400');
+      } else {
+        delete appData.weeklyAttendance.attendedSessions[sessionId];
+        if (targetSub && targetSub.completedLectures > 0) {
+          targetSub.completedLectures -= 1;
+        }
+        deductXP(25);
+        showToast(`إلغاء حضور: ${subName}`, 'fa-solid fa-rotate-left text-slate-400');
+      }
+
+      saveState();
+      renderWeeklySchedule();
+      renderSubjects();
+      updateMetricsUI();
+    }
+
+    // ==================== وظائف سجل الغياب (Absence Tracker Logic) ====================
+
+    // تسجيل غياب سريع بنقرة واحدة من الجدول
+    function quickLogAbsence(subId, subjectName, time) {
+      const today = new Date().toISOString().split('T')[0];
+      const newAbsence = {
+        id: 'abs_' + Date.now(),
+        subId,
+        subjectName,
+        date: today,
+        time: time,
+        reason: "غياب اعتيادي"
+      };
+
+      appData.absenceLog.unshift(newAbsence);
+      saveState();
+      showToast(`تم قيد غياب لمادة: ${subjectName} 🗓️`, 'fa-solid fa-triangle-exclamation text-rose-400');
+      updateAbsenceMetrics();
+    }
+
+    function openManualAbsenceModal() {
+      const modal = document.getElementById('manualAbsenceModal');
+      const select = document.getElementById('absenceSubjectSelect');
+      const dateInput = document.getElementById('absenceDateInput');
+
+      select.innerHTML = appData.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      dateInput.value = new Date().toISOString().split('T')[0];
+
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeManualAbsenceModal() {
+      const modal = document.getElementById('manualAbsenceModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function saveManualAbsence(e) {
+      e.preventDefault();
+      const subId = document.getElementById('absenceSubjectSelect').value;
+      const date = document.getElementById('absenceDateInput').value;
+      const reason = document.getElementById('absenceReasonInput').value.trim() || 'بدون عذر محدد';
+
+      const targetSub = appData.subjects.find(s => s.id === subId) || { name: 'مساق غير محدد' };
+
+      const newAbsence = {
+        id: 'abs_' + Date.now(),
+        subId,
+        subjectName: targetSub.name,
+        date,
+        time: 'مسجل يدوياً',
+        reason
+      };
+
+      appData.absenceLog.unshift(newAbsence);
+      saveState();
+      closeManualAbsenceModal();
+      renderAbsenceList();
+      updateAbsenceMetrics();
+      showToast('تم تسجيل الغياب في السجل', 'fa-solid fa-calendar-xmark text-rose-400');
+      document.getElementById('absenceReasonInput').value = '';
+    }
+
+    function deleteAbsence(id) {
+      if (!confirm('هل تريد حذف قيد الغياب هذا من السجل؟')) return;
+      appData.absenceLog = appData.absenceLog.filter(a => a.id !== id);
+      saveState();
+      renderAbsenceList();
+      updateAbsenceMetrics();
+      showToast('تم حذف قيد الغياب', 'fa-solid fa-trash text-slate-400');
+    }
+
+    function renderAbsenceList() {
+      const container = document.getElementById('absenceListContainer');
+      const emptyState = document.getElementById('absenceEmptyState');
+      const filterSelect = document.getElementById('absenceFilterSelect');
+      const selectedFilter = filterSelect.value;
+
+      // تحديث قائمة الفلتر بالمواد
+      const currentVal = filterSelect.value;
+      filterSelect.innerHTML = '<option value="all">جميع المساقات</option>' + 
+        appData.subjects.map(s => `<option value="${s.id}" ${currentVal === s.id ? 'selected' : ''}>${s.name}</option>`).join('');
+
+      let list = appData.absenceLog || [];
+      if (selectedFilter !== 'all') {
+        list = list.filter(a => a.subId === selectedFilter);
+      }
+
+      container.innerHTML = '';
+
+      if (list.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      list.forEach(item => {
+        const row = document.createElement('div');
+        row.className = "p-3 rounded-xl bg-slate-900/60 border border-dark-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:border-slate-700 transition";
+
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-xs md:text-sm text-white">${item.subjectName}</h4>
+              <p class="text-[11px] text-slate-400 mt-0.5">
+                <i class="fa-regular fa-calendar ml-1 text-slate-500"></i> ${item.date} 
+                <span class="mr-2">• <i class="fa-regular fa-clock ml-0.5 text-slate-500"></i> ${item.time}</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+            <span class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
+              ${item.reason}
+            </span>
+            <button onclick="deleteAbsence('${item.id}')" title="حذف من السجل" class="text-slate-500 hover:text-rose-400 text-xs p-1">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function updateAbsenceMetrics() {
+      const totalCount = (appData.absenceLog || []).length;
+      document.getElementById('totalAbsenceCount').innerText = totalCount;
+
+      // حساب أكثر مادة غياباً
+      if (totalCount > 0) {
+        const counts = {};
+        appData.absenceLog.forEach(a => counts[a.subjectName] = (counts[a.subjectName] || 0) + 1);
+        let maxSub = 'لا يوجد';
+        let maxVal = 0;
+        for (const [sub, val] of Object.entries(counts)) {
+          if (val > maxVal) { maxVal = val; maxSub = `${sub} (${val})`; }
+        }
+        document.getElementById('mostAbsenceSubject').innerText = maxSub;
+      } else {
+        document.getElementById('mostAbsenceSubject').innerText = "لا يوجد";
+      }
+
+      // مؤشر الأمان
+      const safetyElem = document.getElementById('attendanceSafetyStatus');
+      if (totalCount <= 2) {
+        safetyElem.innerText = "ممتازة (آمن)";
+        safetyElem.className = "text-sm font-bold text-emerald-300 mt-0.5";
+      } else if (totalCount <= 5) {
+        safetyElem.innerText = "متوسطة (احذر)";
+        safetyElem.className = "text-sm font-bold text-amber-300 mt-0.5";
+      } else {
+        safetyElem.innerText = "حرجة (اقتراب الحرمان)";
+        safetyElem.className = "text-sm font-bold text-rose-400 mt-0.5";
+      }
+    }
+
+    // إدارة المهام
+    let currentTaskFilter = 'all';
+
+    function setTaskFilter(filter) {
+      currentTaskFilter = filter;
+      ['filterAll', 'filterPending', 'filterCompleted'].forEach(id => {
+        document.getElementById(id).className = "px-2.5 py-1 rounded-lg text-slate-400 hover:text-white";
+      });
+      if (filter === 'all') document.getElementById('filterAll').className = "px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium";
+      if (filter === 'pending') document.getElementById('filterPending').className = "px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium";
+      if (filter === 'completed') document.getElementById('filterCompleted').className = "px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-medium";
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasksListContainer');
+      const emptyState = document.getElementById('tasksEmptyState');
+      container.innerHTML = '';
+
+      let filtered = appData.tasks;
+      if (currentTaskFilter === 'pending') filtered = appData.tasks.filter(t => !t.completed);
+      if (currentTaskFilter === 'completed') filtered = appData.tasks.filter(t => t.completed);
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      filtered.forEach(task => {
+        const subject = appData.subjects.find(s => s.id === task.subjectId) || { name: 'عام', color: '#6366f1' };
+        
+        let priorityBadge = '<span class="text-[10px] bg-slate-500/10 text-slate-400 border border-slate-500/20 px-1.5 py-0.2 rounded">عادي</span>';
+        if (task.priority === 'high') priorityBadge = '<span class="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.2 rounded">عاجل</span>';
+        if (task.priority === 'medium') priorityBadge = '<span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.2 rounded">متوسط</span>';
+
+        const card = document.createElement('div');
+        card.className = `flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl border transition-all ${
+          task.completed ? 'bg-slate-900/40 border-slate-800 opacity-60' : 'bg-slate-800/50 hover:bg-slate-800/80 border-dark-border'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <button onclick="toggleTaskCompletion('${task.id}')" class="w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+              task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-600 hover:border-brand-400 text-transparent'
+            }">
+              <i class="fa-solid fa-check text-[10px]"></i>
+            </button>
+            <div>
+              <h4 class="font-bold text-xs md:text-sm ${task.completed ? 'line-through text-slate-400' : 'text-white'}">${task.title}</h4>
+              <div class="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
+                <span class="inline-flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${subject.color}"></span>
+                  ${subject.name}
+                </span>
+                ${task.dueDate ? `<span>• <i class="fa-regular fa-calendar ml-0.5"></i> ${task.dueDate}</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            ${priorityBadge}
+            <div class="flex items-center gap-1">
+              <button onclick="editTask('${task.id}')" class="p-1 rounded text-slate-400 hover:text-white">
+                <i class="fa-regular fa-pen-to-square text-xs"></i>
+              </button>
+              <button onclick="deleteTask('${task.id}')" class="p-1 rounded text-slate-400 hover:text-rose-400">
+                <i class="fa-regular fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleTaskCompletion(id) {
+      const task = appData.tasks.find(t => t.id === id);
+      if (!task) return;
+      task.completed = !task.completed;
+
+      if (task.completed) {
+        addXP(50, 'إنجاز مهمة');
+        showToast('مبروك إنجاز المهمة! (+50 XP)', 'fa-solid fa-circle-check text-emerald-400', true);
+        const ach = appData.achievements.find(a => a.id === 'first_task');
+        if (ach && !ach.unlocked) {
+          ach.unlocked = true;
+          renderAchievements();
+        }
+      }
+
+      saveState();
+      renderTasks();
+      updateMetricsUI();
+    }
+
+    function deleteTask(id) {
+      appData.tasks = appData.tasks.filter(t => t.id !== id);
+      saveState();
+      renderTasks();
+      updateMetricsUI();
+      showToast('تم حذف المهمة');
+    }
+
+    function openTaskModal(taskId = null) {
+      const modal = document.getElementById('taskModal');
+      const subjectSelect = document.getElementById('taskSubjectInput');
+      
+      subjectSelect.innerHTML = appData.subjects.map(sub => `<option value="${sub.id}">${sub.name}</option>`).join('');
+
+      if (taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (task) {
+          document.getElementById('taskIdInput').value = task.id;
+          document.getElementById('taskTitleInput').value = task.title;
+          document.getElementById('taskSubjectInput').value = task.subjectId;
+          document.getElementById('taskPriorityInput').value = task.priority;
+          document.getElementById('taskDateInput').value = task.dueDate || '';
+          document.getElementById('taskModalTitle').innerText = "تعديل المهمة";
+        }
+      } else {
+        document.getElementById('taskIdInput').value = '';
+        document.getElementById('taskTitleInput').value = '';
+        document.getElementById('taskPriorityInput').value = 'medium';
+        document.getElementById('taskDateInput').value = '';
+        document.getElementById('taskModalTitle').innerText = "إضافة مهمة";
+      }
+
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeTaskModal() {
+      const modal = document.getElementById('taskModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function saveTask(e) {
+      e.preventDefault();
+      const id = document.getElementById('taskIdInput').value;
+      const title = document.getElementById('taskTitleInput').value.trim();
+      const subjectId = document.getElementById('taskSubjectInput').value;
+      const priority = document.getElementById('taskPriorityInput').value;
+      const dueDate = document.getElementById('taskDateInput').value;
+
+      if (!title) return;
+
+      if (id) {
+        const index = appData.tasks.findIndex(t => t.id === id);
+        if (index !== -1) {
+          appData.tasks[index] = { ...appData.tasks[index], title, subjectId, priority, dueDate };
+          showToast('تم تعديل المهمة');
+        }
+      } else {
+        appData.tasks.unshift({
+          id: 'task_' + Date.now(),
+          title, subjectId, priority, dueDate, completed: false
+        });
+        showToast('تمت إضافة المهمة');
+      }
+
+      saveState();
+      closeTaskModal();
+      renderTasks();
+      updateMetricsUI();
+    }
+
+    function editTask(id) {
+      openTaskModal(id);
+    }
+
+    // المساقات
+    function renderSubjects() {
+      const container = document.getElementById('subjectsContainer');
+      container.innerHTML = '';
+
+      appData.subjects.forEach(sub => {
+        const percentage = Math.min(100, Math.round((sub.completedLectures / sub.lecturesCount) * 100)) || 0;
+        const pendingTasksCount = appData.tasks.filter(t => t.subjectId === sub.id && !t.completed).length;
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-900/60 rounded-xl p-3 border border-dark-border flex flex-col justify-between hover:border-slate-600 transition";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-1.5 mb-1.5">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${sub.color}"></span>
+                <h4 class="font-bold text-white text-xs">${sub.name}</h4>
+              </div>
+              <button onclick="deleteSubject('${sub.id}')" title="حذف" class="text-slate-500 hover:text-rose-400 text-[10px]">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 mb-1">
+              <span>(${sub.completedLectures}/${sub.lecturesCount}) محاضرة</span>
+              <span class="font-bold text-slate-200">${percentage}%</span>
+            </div>
+
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-3">
+              <div class="h-full rounded-full transition-all duration-500" style="width: ${percentage}%; background-color: ${sub.color};"></div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[11px]">
+            <span class="text-slate-400">
+              <i class="fa-solid fa-list-check ml-1 text-slate-500"></i> ${pendingTasksCount} مهام
+            </span>
+
+            <div class="flex items-center gap-1">
+              <button onclick="adjustLectureCount('${sub.id}', -1)" title="إنقاص" class="w-5 h-5 rounded bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-xs">-</button>
+              <button onclick="adjustLectureCount('${sub.id}', 1)" title="زيادة (+25 XP)" class="w-5 h-5 rounded bg-indigo-600/40 border border-indigo-500/40 text-white flex items-center justify-center font-bold text-xs">+</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function adjustLectureCount(subjectId, delta) {
+      const sub = appData.subjects.find(s => s.id === subjectId);
+      if (!sub) return;
+
+      const newCount = sub.completedLectures + delta;
+      if (newCount >= 0 && newCount <= sub.lecturesCount) {
+        sub.completedLectures = newCount;
+        if (delta > 0) addXP(25, `حضور ${sub.name}`);
+        saveState();
+        renderSubjects();
+        updateMetricsUI();
+      }
+    }
+
+    function deleteSubject(subjectId) {
+      if (appData.subjects.length <= 1) {
+        showToast('يجب الاحتفاظ بمساق واحد على الأقل!', 'fa-solid fa-triangle-exclamation text-amber-400');
+        return;
+      }
+      if (!confirm('هل أنت متأكد من حذف هذا المساق؟')) return;
+
+      appData.subjects = appData.subjects.filter(s => s.id !== subjectId);
+      appData.tasks = appData.tasks.filter(t => t.subjectId !== subjectId);
+      saveState();
+      renderSubjects();
+      renderTasks();
+      updateMetricsUI();
+      showToast('تم حذف المساق');
+    }
+
+    function openSubjectModal() {
+      const modal = document.getElementById('subjectModal');
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeSubjectModal() {
+      const modal = document.getElementById('subjectModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function saveSubject(e) {
+      e.preventDefault();
+      const name = document.getElementById('subNameInput').value.trim();
+      const lecturesCount = parseInt(document.getElementById('subLecturesInput').value) || 28;
+      const completedLectures = parseInt(document.getElementById('subCompletedInput').value) || 0;
+      const color = document.getElementById('subColorInput').value;
+
+      if (!name) return;
+
+      appData.subjects.push({
+        id: 'sub_' + Date.now(),
+        name, lecturesCount,
+        completedLectures: Math.min(completedLectures, lecturesCount),
+        color
+      });
+
+      saveState();
+      closeSubjectModal();
+      renderSubjects();
+      updateMetricsUI();
+      showToast('تمت إضافة المساق بنجاح');
+      document.getElementById('subjectForm').reset();
+    }
+
+    function renderAchievements() {
+      const list = document.getElementById('achievementsList');
+      const counter = document.getElementById('achievementsCount');
+      list.innerHTML = '';
+
+      const unlockedCount = appData.achievements.filter(a => a.unlocked).length;
+      counter.innerText = `${unlockedCount} / ${appData.achievements.length}`;
+
+      appData.achievements.forEach(ach => {
+        const item = document.createElement('div');
+        item.className = `flex items-center gap-2.5 p-2 rounded-xl border transition-all ${
+          ach.unlocked ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-slate-900/40 border-dark-border opacity-40 text-slate-400'
+        }`;
+
+        item.innerHTML = `
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${
+            ach.unlocked ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-600'
+          }">
+            <i class="fa-solid ${ach.icon}"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h4 class="font-bold text-xs text-white">${ach.title}</h4>
+              ${ach.unlocked ? '<span class="text-[9px] bg-amber-400/20 text-amber-300 px-1 rounded">مكتمل</span>' : ''}
+            </div>
+            <p class="text-[10px] text-slate-400">${ach.desc}</p>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function updateCountdown() {
+      document.getElementById('examLabel').innerText = appData.examTarget.title;
+      document.getElementById('examTargetDate').innerText = `التاريخ: ${appData.examTarget.date}`;
+
+      const target = new Date(appData.examTarget.date).getTime();
+      const now = new Date().getTime();
+      const diff = target - now;
+
+      if (diff > 0) {
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        document.getElementById('countdownDays').innerText = `${days} يوماً`;
+      } else {
+        document.getElementById('countdownDays').innerText = "اليوم!";
+      }
+    }
+
+    function openExamModal() {
+      const modal = document.getElementById('examModal');
+      document.getElementById('examTitleInput').value = appData.examTarget.title;
+      document.getElementById('examDateModalInput').value = appData.examTarget.date;
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeExamModal() {
+      const modal = document.getElementById('examModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function saveExamCountdown(e) {
+      e.preventDefault();
+      const title = document.getElementById('examTitleInput').value.trim();
+      const date = document.getElementById('examDateModalInput').value;
+      if (!title || !date) return;
+
+      appData.examTarget = { title, date };
+      saveState();
+      updateCountdown();
+      closeExamModal();
+      showToast('تم تعديل موعد الامتحان');
+    }
+
+    function openProfileModal() {
+      const modal = document.getElementById('profileModal');
+      document.getElementById('profileNameInput').value = appData.profile.name;
+      document.getElementById('profileMajorInput').value = appData.profile.major;
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeProfileModal() {
+      const modal = document.getElementById('profileModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function saveProfile(e) {
+      e.preventDefault();
+      const name = document.getElementById('profileNameInput').value.trim();
+      const major = document.getElementById('profileMajorInput').value.trim();
+      if (!name || !major) return;
+
+      appData.profile.name = name;
+      appData.profile.major = major;
+      saveState();
+      updateProfileUI();
+      closeProfileModal();
+      showToast('تم حفظ الملف الشخصي');
+    }
+
+    function openLogStudyModal() {
+      const modal = document.getElementById('logStudyModal');
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeLogStudyModal() {
+      const modal = document.getElementById('logStudyModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function saveManualStudy(e) {
+      e.preventDefault();
+      const minutes = parseInt(document.getElementById('manualMinutesInput').value) || 0;
+      if (minutes <= 0) return;
+
+      appData.stats.totalMinutesStudied += minutes;
+      const today = new Date().toISOString().split('T')[0];
+      appData.stats.dailyHistory[today] = +((appData.stats.dailyHistory[today] || 0) + (minutes / 60)).toFixed(1);
+
+      addXP(Math.round(minutes * 1.5), `تسجيل يدوي (${minutes} د)`);
+      saveState();
+      closeLogStudyModal();
+      updateAllUI();
+      renderStudyChart();
+      showToast(`تمت إضافة ${minutes} دقيقة دراسة`);
+    }
+
+    function updateProfileUI() {
+      document.getElementById('welcomeStudentName').innerText = appData.profile.name;
+      document.getElementById('welcomeStudentMajor').innerText = appData.profile.major;
+      document.getElementById('currentLevelBadge').innerText = `مستوى ${appData.profile.level}`;
+      document.getElementById('streakCount').innerText = `${appData.profile.streakDays} يوم`;
+
+      const xpForNextLevel = appData.profile.level * 250;
+      const xpPercent = Math.min(100, Math.round((appData.profile.xp / xpForNextLevel) * 100));
+
+      document.getElementById('xpProgressText').innerText = `${appData.profile.xp}/${xpForNextLevel}`;
+      document.getElementById('xpProgressBar').style.width = `${xpPercent}%`;
+      document.getElementById('statTotalXP').innerText = appData.profile.xp;
+    }
+
+    function updateMetricsUI() {
+      const hours = (appData.stats.totalMinutesStudied / 60).toFixed(1);
+      document.getElementById('statStudyHours').innerText = `${hours} س`;
+
+      const completed = appData.tasks.filter(t => t.completed).length;
+      document.getElementById('statCompletedTasks').innerText = `${completed} / ${appData.tasks.length}`;
+
+      let totalLec = 0, doneLec = 0;
+      appData.subjects.forEach(s => {
+        totalLec += s.lecturesCount;
+        doneLec += s.completedLectures;
+      });
+      const overallRate = totalLec > 0 ? Math.round((doneLec / totalLec) * 100) : 0;
+      document.getElementById('statCompletionRate').innerText = `${overallRate}%`;
+    }
+
+    function updateAllUI() {
+      updateProfileUI();
+      updateMetricsUI();
+      updateCountdown();
+      renderWeeklySchedule();
+      renderTasks();
+      renderSubjects();
+      renderAchievements();
+      updateAbsenceMetrics();
+    }
+
+    function exportDataBackup() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `study_dashboard_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('تم تصدير النسخة الاحتياطية بنجاح 💾');
+    }
+
+    function importDataBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported.profile && imported.subjects) {
+            appData = {
+              ...defaultData,
+              ...imported,
+              profile: { ...defaultData.profile, ...imported.profile },
+              stats: { ...defaultData.stats, ...imported.stats },
+              weeklyAttendance: { ...defaultData.weeklyAttendance, ...(imported.weeklyAttendance || {}) },
+              absenceLog: imported.absenceLog || []
+            };
+            saveState();
+            checkWeeklyAutoReset();
+            updateAllUI();
+            renderStudyChart();
+            showToast('تمت استعادة البيانات بنجاح! 🎉', 'fa-solid fa-circle-check', true);
+          } else {
+            showToast('الملف غير مطابق!', 'fa-solid fa-triangle-exclamation text-rose-400');
+          }
+        } catch (err) {
+          showToast('حدث خطأ أثناء قراءة الملف', 'fa-solid fa-triangle-exclamation text-rose-400');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      checkWeeklyAutoReset();
+      updateStreakLogic();
+      updateAllUI();
+      renderStudyChart();
+      updateTimerDisplay();
+    });
+  </script>
+</body>
+</html>
